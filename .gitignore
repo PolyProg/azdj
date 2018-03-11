@@ -1,0 +1,5 @@
+# Configuration
+config.sh
+
+# State folder
+.state/
