@@ -268,7 +268,7 @@ if [ "$1" = 'set-https' ]; then
   fi
 
   # Execute the HTTPS script
-  vm_ssh "$SERVER_IP" "DOMAIN='$CONTEST_HOSTNAME'; EMAIL='$CONTEST_EMAIL'; $(cat scripts/https.sh)"
+  vm_ssh "$SERVER_IP" "DOMAIN='$CONTEST_HOSTNAME'; EMAIL='$CONTEST_EMAIL'; $(cat scripts/server-https.sh)"
 
   # Toggle the witness for further runs
   touch "$HTTPS_WITNESS_FILE"
