@@ -3,22 +3,20 @@
 
 # TODO:
 # - Redirect all output to a log file (EXCEPT azure login!)
-# - TLS via letsencrypt
 # - Custom languages in judgehosts
 
 ### Parse arguments
 
 print_help() {
   echo 'Usage:'
-  echo "$0 init"
-  echo "$0 add-judge"
+  echo "$0 [init | set-https | add-judge]"
   exit 1
 }
 
 if [ $# -eq 0 ]; then
   print_help
 fi
-if [ "$1" != 'init' ] && [ "$1" != 'add-judge' ]; then
+if [ "$1" != 'init' ] && [ "$1" != 'set-https' ] && [ "$1" != 'add-judge' ]; then
   print_help
 fi
 
@@ -49,7 +47,7 @@ STATE_DIR='.state'
 # Check if it's the first run, install deps if so
 if [ ! -d "$STATE_DIR" ]; then
   sudo apt-get update
-  sudo apt-get install -y bc openssl openssh-client
+  sudo apt-get install -y bc dnsutils openssl openssh-client
 
   mkdir "$STATE_DIR"
 fi
@@ -132,7 +130,8 @@ nsg_range_index=100 # min priority
 nsg_allow_range() {
   # 22: SSH
   # 80: HTTP
-  for port in '22' '80'; do
+  # 443: HTTPS (even if not requested)
+  for port in '22' '80' '443'; do
     # note: using the range in the rule name is not possible because of the slash
     rule_name="$port-$nsg_range_index"
     nsg_range_index="$(echo "$nsg_range_index + 1" | bc)"
@@ -229,6 +228,51 @@ fi
 
 SERVER_IP="$(cat "$SERVER_IP_FILE")"
 
+
+### Set HTTPS if needed
+if [ "$1" = 'set-https' ]; then
+  HTTPS_WITNESS_FILE="$STATE_DIR/https_enabled"
+  if [ -f "$HTTPS_WITNESS_FILE" ]; then
+    echo 'HTTPS has already been enabled!'
+    exit 1
+  fi
+
+  # Tell the user what to do (requires user input!)
+  echo "Please go to your DNS provider and set up an A record for '$CONTEST_HOSTNAME' pointing to '$SERVER_IP'."
+  echo 'Press <ENTER> when this is done.'
+  read
+
+  # Wait until the DNS changes have propagated
+  attempt=1
+  while ! nslookup "$CONTEST_HOSTNAME"; do
+    sleep 5
+    attempt="$(echo "$attempt + 1" | bc)"
+
+    echo -n '.' # indicate some progress to the user
+
+    # Wait 15 minutes total
+    if [ $attempt -eq 180 ]; then
+      echo "Could not resolve $CONTEST_HOSTNAME, please double-check your DNS settings or try again in a while."
+      exit 1
+    fi
+  done
+
+  # Newline at the end of progress indication
+  echo ''
+
+  # Make sure the domain is set up properly
+  actual_ip="$(dig +short $CONTEST_HOSTNAME)"
+  if [ "$actual_ip" != "$SERVER_IP" ]; then
+    echo "$CONTEST_HOSTNAME resolves to $actual_ip; please point it to $SERVER_IP instead."
+    exit 1
+  fi
+
+  # Execute the HTTPS script
+  vm_ssh "$SERVER_IP" "DOMAIN='$CONTEST_HOSTNAME'; EMAIL='$CONTEST_EMAIL'; $(cat scripts/https.sh)"
+
+  # Toggle the witness for further runs
+  touch "$HTTPS_WITNESS_FILE"
+fi
 
 
 ### Add a judge if needed

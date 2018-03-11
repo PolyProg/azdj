@@ -1,5 +1,8 @@
 ## Basic properties
 
+# Host name of the contest server (which you will configure on your DNS provider once the server is created)
+CONTEST_HOSTNAME='contest.example.org'
+
 # E-mail of the contest organizers
 CONTEST_EMAIL='admin@example.org'
 

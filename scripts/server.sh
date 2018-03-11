@@ -48,11 +48,13 @@ sudo docker restart db
 wait_db
 
 # Create a DOMserver container (with bare-install, we don't want example data)
+# Expose ports 80 (HTTP) and 443 (HTTPS) - even if HTTPS isn't needed, since ports must be exposed at container creation time
 sudo docker rm -f server >> /dev/null 2>&1 || true
 sudo docker run --name=server \
                 --network=net \
                 --detach \
                 -p 80:80 \
+                -p 443:443 \
                 --restart=always \
                 --volume=/sys/fs/cgroup:/sys/fs/cgroup:ro \
                 -e "CONTAINER_TIMEZONE=$TIMEZONE" \
