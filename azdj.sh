@@ -220,7 +220,7 @@ if [ ! -f "$SERVER_IP_FILE" ]; then
   vm_ssh "$SERVER_IP" "$(cat scripts/init.sh)"
 
   # Wait for the machine to boot
-  sleep 20
+  sleep 60
 
   # Install the DOMjudge server
   vm_ssh "$SERVER_IP" "TIMEZONE='$CONTEST_TIMEZONE'; \
@@ -315,7 +315,7 @@ if [ "$1" = 'add-judge' ]; then
   vm_ssh "$JUDGE_IP" "$(cat scripts/init.sh)"
 
   # Wait for the machine to boot
-  sleep 20
+  sleep 60
 
   # If HTTPS is enabled, access server by name, otherwise by IP
   SERVER_TARGET="http://$SERVER_IP"

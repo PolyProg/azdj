@@ -91,7 +91,7 @@ umount '/chroot/domjudge/dev/pts'
 EOF
 
 # Execute the command
-sudo docker exec server bash -c "LANGUAGES='$LANGUAGES'; $(cat command.sh)"
+sudo docker exec judge bash -c "LANGUAGES='$LANGUAGES'; $(cat command.sh)"
 
 # Remove the command file, useless now
 rm command.sh
