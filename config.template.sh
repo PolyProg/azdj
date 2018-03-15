@@ -1,6 +1,9 @@
 ## Basic properties
 
-# Host name of the contest server (which you will configure on your DNS provider once the server is created)
+# Whether HTTPS should be set up for the server (you need to be able to create an A record in your DNS provider's settings)
+CONTEST_HAS_HTTPS='true'
+
+# Host name of the contest server, if using HTTPS
 CONTEST_HOSTNAME='contest.example.org'
 
 # E-mail of the contest organizers
@@ -17,6 +20,9 @@ CONTEST_LANGUAGES='c11 cpp17 java8 python27 python35'
 
 # Set all judging errors to have the same priority (faster judging, less accurate errors)
 CONTEST_DISABLE_ERROR_PRIORITY='true'
+
+# Disable auto-detection of the '.py' extension, which is ambiguous and can confuse contestants
+CONTEST_DISABLE_AMBIGUOUS_PY_EXTENSION='true'
 
 # Location of the contest in Azure
 AZURE_LOCATION='westeurope'

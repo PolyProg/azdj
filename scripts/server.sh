@@ -5,10 +5,11 @@
 
 # Arguments
 # $TIMEZONE: the server timezone
-# $DISABLE_ERROR_PRIORITY: whether to disable priority of judging errors (so that all errors have the same priority)
 # $DB_PASSWORD: the root password of the DB
 # $ADMIN_PASSWORD: the password for the DOMjudge admin user
 # $JUDGE_PASSWORD: the password for judgehosts
+# $DISABLE_ERROR_PRIORITY: whether to disable priority of judging errors (so that all errors have the same priority)
+# $DISABLE_AMBIGUOUS_PY_EXTENSION: whether to disable the ambiguous 'py' file extension discovery (and leave 'py2' and 'py3')
 
 # HACK wait until Docker has finished initializing fully, otherwise the client can't find the socket
 sleep 20
@@ -90,10 +91,20 @@ password_set() {
 password_set 'admin' "$ADMIN_PASSWORD"
 password_set 'judgehost' "$JUDGE_PASSWORD"
 
-# Disable results priority if needed (via JSON in SQL...)
-if [ "$DISABLE_ERROR_PRIORITY" = "true" ]; then
+
+# Execute a command in MySQL
+# $1: The comand
+db_exec() {
   sudo docker exec db \
-                   sh -c "echo 'update configuration \
-                                set value = \"{\\\"memory-limit\\\":99,\\\"output-limit\\\":99,\\\"run-error\\\":99,\\\"timelimit\\\":99,\\\"wrong-answer\\\":99,\\\"no-output\\\":99,\\\"correct\\\":1}\" \
-                                where name = \"results_prio\";' | mysql -uroot -p$DB_PASSWORD db"
+                   sh -c "echo '$1' | mysql -uroot -p$DB_PASSWORD db"
+}
+
+# Disable results priority if needed (via JSON in SQL...)
+if [ "$DISABLE_ERROR_PRIORITY" = 'true' ]; then
+  db_exec 'UPDATE configuration SET value = "{\"memory-limit\":99,\"output-limit\":99,\"run-error\":99,\"timelimit\":99,\"wrong-answer\":99,\"no-output\":99,\"correct\":1}" WHERE name = "results_prio";'
+fi
+
+# Disable '.py' extension auto-detection if needed (again, JSON in SQL...)
+if [ "$DISABLE_AMBIGUOUS_PY_EXTENSION" = 'true' ]; then
+  db_exec 'UPDATE language SET extensions = "[\"py2\"]" WHERE langid = "py2";'
 fi

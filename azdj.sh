@@ -3,20 +3,22 @@
 
 # TODO:
 # - Redirect all output to a log file (EXCEPT azure login!)
-# - Custom languages in judgehosts
+# - Enable languages in judge config (and e.g. edit C++ to add the c++17 flag...)
+# - Figure out why the sleep after running init is needed
+#   With ssh -vvv, it hangs at 'shell request accepted on channel 0'...
 
 ### Parse arguments
 
 print_help() {
   echo 'Usage:'
-  echo "$0 [init | set-https | add-judge]"
+  echo "$0 [init | add-judge]"
   exit 1
 }
 
 if [ $# -eq 0 ]; then
   print_help
 fi
-if [ "$1" != 'init' ] && [ "$1" != 'set-https' ] && [ "$1" != 'add-judge' ]; then
+if [ "$1" != 'init' ] && [ "$1" != 'add-judge' ]; then
   print_help
 fi
 
@@ -44,12 +46,17 @@ fi
 # State directory, to store other stuff
 STATE_DIR='.state'
 
-# Check if it's the first run, install deps if so
+# Check if it's the first run
+FIRST_RUN='false'
 if [ ! -d "$STATE_DIR" ]; then
+  mkdir "$STATE_DIR"
+  FIRST_RUN='true'
+fi
+
+# Install dependencies
+if [ "$FIRST_RUN" = 'true' ]; then
   sudo apt-get update
   sudo apt-get install -y bc dnsutils openssl openssh-client
-
-  mkdir "$STATE_DIR"
 fi
 
 # Install Azure CLI
@@ -65,7 +72,9 @@ fi
 
 # Log into Azure (user interaction!)
 if ! az account show >> /dev/null 2>&1; then
+  echo '!!!'
   echo 'Please log into Azure:'
+  echo '!!!'
   az login
 fi
 
@@ -112,6 +121,10 @@ SERVER_JUDGE_PASSWORD="$(password_get $SERVER_JUDGE_PASSWORD_FILE)"
 
 # Create an Azure resource group
 if [ "$(az group exists --name "$AZURE_GROUP_NAME")" = "false" ]; then
+  if [ "$FIRST_RUN" != 'true' ]; then
+    echo 'ERROR: not the first script run, but the Azure group does not exist... inconsistent state.'
+    exit 1
+  fi
   az group create --name "$AZURE_GROUP_NAME" \
                   --location "$AZURE_LOCATION"
 fi
@@ -206,12 +219,16 @@ if [ ! -f "$SERVER_IP_FILE" ]; then
   # Initialize it
   vm_ssh "$SERVER_IP" "$(cat scripts/init.sh)"
 
+  # Wait for the machine to boot
+  sleep 20
+
   # Install the DOMjudge server
   vm_ssh "$SERVER_IP" "TIMEZONE='$CONTEST_TIMEZONE'; \
-                       DISABLE_ERROR_PRIORITY='$CONTEST_DISABLE_ERROR_PRIORITY'; \
                        DB_PASSWORD='$DB_ROOT_PASSWORD'; \
                        ADMIN_PASSWORD='$SERVER_ADMIN_PASSWORD'; \
                        JUDGE_PASSWORD='$SERVER_JUDGE_PASSWORD'; \
+                       DISABLE_ERROR_PRIORITY='$CONTEST_DISABLE_ERROR_PRIORITY'; \
+                       DISABLE_AMBIGUOUS_PY_EXTENSION='$CONTEST_DISABLE_AMBIGUOUS_PY_EXTENSION'; \
                        $(cat scripts/server.sh)"
 
   # Write down the IP
@@ -229,17 +246,14 @@ fi
 SERVER_IP="$(cat "$SERVER_IP_FILE")"
 
 
-### Set HTTPS if needed
-if [ "$1" = 'set-https' ]; then
-  HTTPS_WITNESS_FILE="$STATE_DIR/https_enabled"
-  if [ -f "$HTTPS_WITNESS_FILE" ]; then
-    echo 'HTTPS has already been enabled!'
-    exit 1
-  fi
-
+###  Set up HTTPS if required
+HTTPS_WITNESS_FILE="$STATE_DIR/https_enabled"
+if [ "$1" = 'init' ] && [ "$CONTEST_HAS_HTTPS" = 'true' ] && [ ! -f "$HTTPS_WITNESS_FILE" ]; then
   # Tell the user what to do (requires user input!)
+  echo '!!!'
   echo "Please go to your DNS provider and set up an A record for '$CONTEST_HOSTNAME' pointing to '$SERVER_IP'."
   echo 'Press <ENTER> when this is done.'
+  echo '!!!'
   read
 
   # Wait until the DNS changes have propagated
@@ -300,10 +314,20 @@ if [ "$1" = 'add-judge' ]; then
   # Initialize it
   vm_ssh "$JUDGE_IP" "$(cat scripts/init.sh)"
 
+  # Wait for the machine to boot
+  sleep 20
+
+  # If HTTPS is enabled, access server by name, otherwise by IP
+  SERVER_TARGET="http://$SERVER_IP"
+  if [ "$CONTEST_HAS_HTTPS" = 'true' ]; then
+    SERVER_TARGET="https://$CONTEST_HOSTNAME"
+  fi
+
   # Install the DOMjudge judge
   vm_ssh "$JUDGE_IP" "TIMEZONE='$CONTEST_TIMEZONE'; \
-                      SERVER='$SERVER_IP'; \
+                      SERVER='$SERVER_TARGET'; \
                       SERVER_PASSWORD='$SERVER_JUDGE_PASSWORD'; \
+                      LANGUAGES='$CONTEST_LANGUAGES'; \
                       $(cat scripts/judge.sh)"
 
   # Write down its IP

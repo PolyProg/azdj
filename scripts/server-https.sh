@@ -11,7 +11,7 @@ cat > command.sh << 'EOF'
 # Install getssl (much simpler than certbot)
 # TODO reconsider certbot once they have fixed their nginx integration?
 apt-get update
-apt-get install --no-install-recommends curl dnsutils
+apt-get install -y --no-install-recommends curl dnsutils ca-certificates
 curl --silent https://raw.githubusercontent.com/srvrco/getssl/master/getssl > getssl
 chmod 700 getssl
 
@@ -19,7 +19,7 @@ chmod 700 getssl
 ./getssl -c "$DOMAIN"
 
 # Provide the proper CA (instead of the staging one), email, and ACME challenge path
-echo 'CA="https://acme-v01.api.letsencrypt.org"' >> "/root/.getssl/$DOMAIN/getssl.cfg"
+#echo 'CA="https://acme-v01.api.letsencrypt.org"' >> "/root/.getssl/$DOMAIN/getssl.cfg"
 echo 'ACCOUNT_EMAIL="$EMAIL"' >> "/root/.getssl/$DOMAIN/getssl.cfg"
 echo 'ACL="/opt/domjudge/domserver/www/.well-known/acme-challenge"' >> "/root/.getssl/$DOMAIN/getssl.cfg"
 
@@ -43,6 +43,7 @@ sed -i "s|^server {|server { \n\
 \tssl_certificate_key /root/.getssl/$DOMAIN/$DOMAIN.key;\n|" /etc/nginx/sites-enabled/default
 
 # Configure nginx to redirect HTTP to HTTPS
+echo "" >> /etc/nginx/sites-enabled/default # just in case it doesn't finish by a newline
 echo "server { listen 80; return 301 https://$DOMAIN\$request_uri; }" >> /etc/nginx/sites-enabled/default
 
 # Restart nginx
