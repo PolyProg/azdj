@@ -25,6 +25,17 @@ fi
 
 ### Sanity checks
 
+# Make sure we can create files with normal permissions, otherwise SSH won't work with a key
+touch azdj-test
+chmod 600 azdj-test
+if [ "$(stat -c '%a' azdj-test)" != '600' ]; then
+  rm azdj-test
+  echo 'Your filesystem does not seem to support permissions.'
+  echo 'If you are running this in the Windows Subsystem for Linux, please use the Linux filesystem (e.g. your $HOME), and not a Windows drive.'
+  exit 1
+fi
+rm azdj-test
+
 # Make sure we're in the proper directory
 if [ ! -d 'scripts' ]; then
   echo "Please run $0 from the folder it is located in."
@@ -71,7 +82,8 @@ if ! command -v az >> /dev/null; then
 fi
 
 # Log into Azure (user interaction!)
-if ! az account show >> /dev/null 2>&1; then
+# We also check az group list to catch the "credentials expired due to inactivity" error
+if [ ! az account show >> /dev/null 2>&1 ] || [ ! az group list >> /dev/null 2>&1 ]; then
   echo '!!!'
   echo 'Please log into Azure:'
   echo '!!!'
@@ -168,7 +180,7 @@ nsg_allow_range() {
 }
 
 # Configure the NSG inbound rules from config
-for range in "$CONTEST_ALLOWED_IP_RANGES"; do
+for range in $CONTEST_ALLOWED_IP_RANGES; do
   nsg_allow_range "$range"
 done
 
