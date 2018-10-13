@@ -6,6 +6,7 @@
 # - Enable languages in judge config (and e.g. edit C++ to add the c++17 flag...)
 # - Figure out why the sleep after running init is needed
 #   With ssh -vvv, it hangs at 'shell request accepted on channel 0'...
+# - Make HTTPS work
 
 ### Parse arguments
 

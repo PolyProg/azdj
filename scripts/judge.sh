@@ -47,8 +47,8 @@ chroot_exec() {
 chroot_exec "echo '$(cat /etc/resolv.conf)' > /etc/resolv.conf"
 
 # Always install the 'testing' repo, doesn't hurt if not needed
-chroot_exec "echo 'deb http://deb.debian.org/debian testing main' >> /etc/apt/sources.list && \
-             echo apt-get update"
+chroot_exec "echo 'deb http://deb.debian.org/debian testing main' >> /etc/apt/sources.list"
+chroot_exec "apt-get update"
 
 for lang in $LANGUAGES; do
   install=''
@@ -64,6 +64,7 @@ for lang in $LANGUAGES; do
       alias='/usr/bin/g++-7 /usr/bin/g++'
       ;;
     java8)
+      # TODO headless?
       install='openjdk-8-jdk'
       ;;
     python27)
@@ -77,12 +78,14 @@ for lang in $LANGUAGES; do
   esac
 
   if [ ! -z "$install" ]; then
-    chroot_exec "apt-get install $install"
+    chroot_exec "apt-get install -y $install"
   fi
   if [ ! -z "$alias" ]; then
-    chroot_exec "ln -s $alias"
+    chroot_exec "ln -fs $alias"
   fi
 done
+
+apt-get install -y python2.7 python3
 
 # Unmount the stuff we did at the beginning
 umount '/chroot/domjudge/proc'
