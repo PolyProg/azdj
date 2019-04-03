@@ -20,6 +20,7 @@ sudo docker run --name=judge \
                 --detach \
                 --restart=always \
                 --privileged \
+                --volume=/sys/fs/cgroup:/sys/fs/cgroup:ro \
                 -e "CONTAINER_TIMEZONE=$TIMEZONE" \
                 -e "DOMSERVER_BASEURL=$SERVER/" \
                 -e 'JUDGEDAEMON_USERNAME=judgehost' \
@@ -46,11 +47,12 @@ chroot_exec() {
 }
 
 # Better Apt config: only required packages, and retry on failure
-cat > '/etc/apt/apt.conf.d/99custom' << EOF
+# note: we're within an EOF-delimited script here, use something else
+cat > '/etc/apt/apt.conf.d/99custom' << 'XXX'
 APT::Install-Suggests "false";
 APT::Install-Recommends "false";
 Acquire::Retries "5";
-EOF
+XXX
 # And in the chroot as well
 chroot_exec "echo '$(cat /etc/apt/apt.conf.d/99custom)' > '/etc/apt/apt.conf.d/99custom'"
 

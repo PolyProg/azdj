@@ -84,7 +84,7 @@ fi
 
 # Log into Azure (user interaction!)
 # We also check az group list to catch the "credentials expired due to inactivity" error
-if [ ! az account show >> /dev/null 2>&1 ] || [ ! az group list >> /dev/null 2>&1 ]; then
+if ! az account show >/dev/null 2>&1 || ! az group list >/dev/null 2>&1; then
   echo '!!!'
   echo 'Please log into Azure:'
   echo '!!!'
@@ -152,9 +152,9 @@ fi
 
 # Allow an IP range to access the VMs
 # $1: The IP range
-# $2: The index of the range (unique, >= 1!)
+# $2: The index of the range (unique, >= 0, < 999!)
 nsg_allow_range() {
-  nsg_range_index="$(echo "$2 * 100" | bc)"
+  nsg_range_index="$(echo "$2 * 4 + 100" | bc)"
   # 22: SSH
   # 80: HTTP
   # 443: HTTPS (even if not requested)
@@ -172,7 +172,7 @@ nsg_allow_range() {
                                  --access Allow \
                                  --protocol Tcp \
                                  --direction Inbound \
-                                 --priority "$nsg_range_index" \
+                                 --priority "$rule_name" \
                                  --source-address-prefix "$1" \
                                  --source-port-range '*' \
                                  --destination-address-prefix '*' \
@@ -195,13 +195,14 @@ AZURE_NSG_ID="$(az network nsg show --resource-group "$AZURE_GROUP_NAME" \
 
 # Create a VM
 # $1: VM name
+# $2: VM size
 # Returns via stdout: The IP, or an empty string if the VM doesn't exist
 vm_create() {
   # Create the VM
   az vm create --resource-group "$AZURE_GROUP_NAME" \
                --name "$1" \
                --nsg "$AZURE_NSG_ID" \
-               --size "$AZURE_VM_SIZE" \
+               --size "$2" \
                --admin-username "$SSH_USERNAME" \
                --ssh-key-value "$SSH_KEY_FILE.pub" \
                --image UbuntuLTS >> /dev/null 2>&1
@@ -230,7 +231,7 @@ if [ ! -f "$SERVER_IP_FILE" ]; then
   fi
 
   # Create the VM
-  SERVER_IP="$(vm_create "$AZURE_VM_SERVER_NAME")"
+  SERVER_IP="$(vm_create "$AZURE_VM_SERVER_NAME" "$AZURE_VM_SERVER_SIZE")"
 
   # Initialize it
   vm_ssh "$SERVER_IP" "$(cat scripts/init.sh)"
@@ -322,7 +323,7 @@ if [ "$1" = 'add-judge' ]; then
   JUDGE_NAME="$AZURE_VM_JUDGE_NAME-$JUDGE_INDEX"
 
   # Create the VM
-  JUDGE_IP="$(vm_create "$JUDGE_NAME")"
+  JUDGE_IP="$(vm_create "$JUDGE_NAME" "$AZURE_VM_JUDGE_SIZE")"
 
   # Allow its IP to access the others (since it communicates with the server via http)
   # +100 to allow for 99 IP ranges before judges

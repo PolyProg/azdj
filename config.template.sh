@@ -27,8 +27,11 @@ CONTEST_DISABLE_AMBIGUOUS_PY_EXTENSION='true'
 # Location of the contest in Azure
 AZURE_LOCATION='westeurope'
 
-# Size of the Azure VMs to use (B1ms is a reasonable and cheap default)
-AZURE_VM_SIZE='Standard_B1ms'
+# Size of the Azure VMs to use for the server
+AZURE_VM_SERVER_SIZE='Standard_A4_v2'
+
+# Size of the Azure VMs to use for the judges
+AZURE_VM_JUDGE_SIZE='Standard_F1'
 
 
 ## Advanced properties - do not touch unless you know what you are doing!
