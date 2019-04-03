@@ -2,10 +2,6 @@
 sudo apt-get update
 sudo apt-get upgrade -y
 
-# TEMP: Use devicemapper for storage, to support ACLs which DOMjudge uses
-sudo mkdir -p /etc/docker
-echo '{ "storage-driver": "devicemapper" }' | sudo tee /etc/docker/daemon.json
-
 # Install Docker
 curl -fsSL get.docker.com -o get-docker.sh
 sudo sh get-docker.sh
@@ -21,7 +17,7 @@ echo 'iptables-persistent iptables-persistent/autosave_v4 boolean true' | sudo d
 echo 'iptables-persistent iptables-persistent/autosave_v6 boolean true' | sudo debconf-set-selections
 sudo apt-get -y install iptables-persistent
 
-# Enable cgroups
+# Enable cgroups (not needed by judgehost, but simpler to put more stuff in init)
 sudo sed -i 's/GRUB_CMDLINE_LINUX="/GRUB_CMDLINE_LINUX="cgroup_enable=memory swapaccount=1/' /etc/default/grub
 sudo update-grub
 sudo reboot

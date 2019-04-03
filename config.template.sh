@@ -16,7 +16,7 @@ CONTEST_TIMEZONE='Europe/Zurich'
 CONTEST_ALLOWED_IP_RANGES="0.0.0.0/0"
 
 # Languages allowed at the contest. This is the full list, remove as needed.
-CONTEST_LANGUAGES='c11 cpp17 java8 python27 python35'
+CONTEST_LANGUAGES='c11 cpp17 java11 python27 python37'
 
 # Set all judging errors to have the same priority (faster judging, less accurate errors)
 CONTEST_DISABLE_ERROR_PRIORITY='true'

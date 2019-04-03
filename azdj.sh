@@ -152,14 +152,15 @@ fi
 
 # Allow an IP range to access the VMs
 # $1: The IP range
-nsg_range_index=100 # min priority
+# $2: The index of the range (unique, >= 1!)
 nsg_allow_range() {
+  nsg_range_index="$(echo "$2 * 100" | bc)"
   # 22: SSH
   # 80: HTTP
   # 443: HTTPS (even if not requested)
   for port in '22' '80' '443'; do
     # note: using the range in the rule name is not possible because of the slash
-    rule_name="$port-$nsg_range_index"
+    rule_name="$nsg_range_index"
     nsg_range_index="$(echo "$nsg_range_index + 1" | bc)"
 
     if [ -z "$(az network nsg rule show --resource-group "$AZURE_GROUP_NAME" \
@@ -181,8 +182,10 @@ nsg_allow_range() {
 }
 
 # Configure the NSG inbound rules from config
+contest_range_index='1'
 for range in $CONTEST_ALLOWED_IP_RANGES; do
-  nsg_allow_range "$range"
+  nsg_allow_range "$range" "$contest_range_index"
+  contest_range_index="$(echo "$contest_range_index + 1" | bc)"
 done
 
 # Get the NSG's ID to create VMs
@@ -322,7 +325,8 @@ if [ "$1" = 'add-judge' ]; then
   JUDGE_IP="$(vm_create "$JUDGE_NAME")"
 
   # Allow its IP to access the others (since it communicates with the server via http)
-  nsg_allow_range "$JUDGE_IP/32"
+  # +100 to allow for 99 IP ranges before judges
+  nsg_allow_range "$JUDGE_IP/32" "$(echo "$JUDGE_INDEX + 100" | bc)"
 
   # Initialize it
   vm_ssh "$JUDGE_IP" "$(cat scripts/init.sh)"
@@ -337,7 +341,8 @@ if [ "$1" = 'add-judge' ]; then
   fi
 
   # Install the DOMjudge judge
-  vm_ssh "$JUDGE_IP" "TIMEZONE='$CONTEST_TIMEZONE'; \
+  vm_ssh "$JUDGE_IP" "NAME='$JUDGE_NAME'; \
+                      TIMEZONE='$CONTEST_TIMEZONE'; \
                       SERVER='$SERVER_TARGET'; \
                       SERVER_PASSWORD='$SERVER_JUDGE_PASSWORD'; \
                       LANGUAGES='$CONTEST_LANGUAGES'; \

@@ -65,7 +65,7 @@ sudo docker run --name=server \
                 -e 'MYSQL_PASSWORD=domjudge' \
                 -e "MYSQL_ROOT_PASSWORD=$DB_PASSWORD" \
                 -e 'DJ_DB_INSTALL_BARE=1' \
-                domjudge/domserver:5.3.2
+                domjudge/domserver:5.3.3
 
 # TODO better way to check that the domjudge container has initialized the DB...
 sleep 30
