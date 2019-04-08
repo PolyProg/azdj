@@ -1,13 +1,6 @@
 #!/bin/bash -x
 # azdj, the Azure DOMjudge utility
 
-# TODO:
-# - Redirect all output to a log file (EXCEPT azure login!)
-# - Enable languages in judge config (and e.g. edit C++ to add the c++17 flag...)
-# - Figure out why the sleep after running init is needed
-#   With ssh -vvv, it hangs at 'shell request accepted on channel 0'...
-# - Make HTTPS work
-
 ### Parse arguments
 
 print_help() {
@@ -246,6 +239,7 @@ if [ ! -f "$SERVER_IP_FILE" ]; then
                        JUDGE_PASSWORD='$SERVER_JUDGE_PASSWORD'; \
                        DISABLE_ERROR_PRIORITY='$CONTEST_DISABLE_ERROR_PRIORITY'; \
                        DISABLE_AMBIGUOUS_PY_EXTENSION='$CONTEST_DISABLE_AMBIGUOUS_PY_EXTENSION'; \
+                       LANGUAGES='$CONTEST_LANGUAGES'; \
                        $(cat scripts/server.sh)"
 
   # Write down the IP

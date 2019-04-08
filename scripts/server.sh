@@ -1,4 +1,4 @@
-# Creates a MySQL container named 'db' (whose only database is also named 'db),
+# Creates a MySQL container named 'db' (whose only database is also named 'db'),
 # and a Docker container named 'server' with a DOMserver.
 # The DOMserver is mapped to port 80 of the host.
 # Requires cgroups (TODO why?)
@@ -10,9 +10,13 @@
 # $JUDGE_PASSWORD: the password for judgehosts
 # $DISABLE_ERROR_PRIORITY: whether to disable priority of judging errors (so that all errors have the same priority)
 # $DISABLE_AMBIGUOUS_PY_EXTENSION: whether to disable the ambiguous 'py' file extension discovery (and leave 'py2' and 'py3')
+# $LANGUAGES: the languages to use in the contest
 
 # HACK wait until Docker has finished initializing fully, otherwise the client can't find the socket
 sleep 20
+
+# Install zip, unzip and vim-common (for 'xxd'), needed for DOMjudge hacks
+sudo apt-get install -y zip unzip vim-common
 
 # Create a subnet so that the DOMserver can talk to the DB
 # (and delete it if it already exists, just in case)
@@ -95,8 +99,10 @@ password_set 'judgehost' "$JUDGE_PASSWORD"
 # Execute a command in MySQL
 # $1: The comand
 db_exec() {
+  # -N: no column names
+  # --raw: no escaping, so we get raw values we can pipe to a file
   sudo docker exec db \
-                   sh -c "echo '$1' | mysql -uroot -p$DB_PASSWORD db"
+                   sh -c "echo '$1' | mysql -N --raw -uroot -p$DB_PASSWORD db"
 }
 
 # Disable results priority if needed (via JSON in SQL...)
@@ -108,3 +114,43 @@ fi
 if [ "$DISABLE_AMBIGUOUS_PY_EXTENSION" = 'true' ]; then
   db_exec 'UPDATE language SET extensions = "[\"py2\"]" WHERE langid = "py2";'
 fi
+
+# Enable the selected languages (and disable everythong else)
+db_exec 'UPDATE language SET allow_submit=0;'
+for lang in $LANGUAGES; do
+  langid=''
+  compile_edit=''
+
+  case $lang in
+    c11)
+      langid='c'
+      compile_edit='s/gcc/gcc -std=c11/'
+      ;;
+    cpp17)
+      langid='cpp'
+      compile_edit='s/g++/g++ -std=c++17/'
+      ;;
+    java11)
+      langid='java'
+      ;;
+    python27)
+      langid='py2'
+      ;;
+    python37)
+      langid='py3'
+      ;;
+  esac
+
+  db_exec "UPDATE language SET allow_submit=1 WHERE langid=\"$langid\";"
+
+  if [ ! -z "$compile_edit" ]; then
+    db_exec "SELECT zipfile FROM executable WHERE execid=\"$langid\";" > 'lang.zip'
+    unzip 'lang.zip'
+    # yes, the compile file is named 'run'...
+    sed -i "$compile_edit" 'run'
+    zip 'new.zip' 'build' 'run'
+    # note that xxd prints newlines so we need to remove them, also md5sum prints one column with the sum and one with the filename
+    db_exec "UPDATE executable SET zipfile=UNHEX(\"$(xxd -p 'new.zip' | tr -d '\n')\"), md5sum=\"$(md5sum 'new.zip' | cut -d ' ' -f1)\" WHERE execid=\"$langid\";"
+    rm 'lang.zip' 'new.zip' 'build' 'run'
+  fi
+done
