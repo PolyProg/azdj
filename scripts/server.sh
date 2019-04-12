@@ -54,8 +54,10 @@ wait_db
 
 # Create a DOMserver container (with bare-install, we don't want example data)
 # Expose ports 80 (HTTP) and 443 (HTTPS) - even if HTTPS isn't needed, since ports must be exposed at container creation time
+# HACK: Workaround for DOMjudge/domjudge-packaging/issues/35
 sudo docker rm -f server >> /dev/null 2>&1 || true
-sudo docker run --name=server \
+sudo docker run --entrypoint /bin/sh \
+                --name=server \
                 --network=net \
                 --detach \
                 -p 80:80 \
@@ -69,7 +71,8 @@ sudo docker run --name=server \
                 -e 'MYSQL_PASSWORD=domjudge' \
                 -e "MYSQL_ROOT_PASSWORD=$DB_PASSWORD" \
                 -e 'DJ_DB_INSTALL_BARE=1' \
-                domjudge/domserver:5.3.3
+                domjudge/domserver:5.3.3 \
+                -c "sed -i '/^# Remove default FPM/,/^# Set up permissions/d' /scripts/start.sh; sed -i 's#php-fpm-domjudge\.sock#php\\\/php7.0-fpm.sock#' /scripts/start.sh; /scripts/start.sh"
 
 # TODO better way to check that the domjudge container has initialized the DB...
 sleep 30
