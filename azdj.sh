@@ -191,6 +191,7 @@ AZURE_NSG_ID="$(az network nsg show --resource-group "$AZURE_GROUP_NAME" \
 # $2: VM size
 # Returns via stdout: The IP, or an empty string if the VM doesn't exist
 vm_create() {
+  # TODO those redirects to /dev/null are required since we do $(vm_create ...), this is bad!
   # Create the VM
   az vm create --resource-group "$AZURE_GROUP_NAME" \
                --name "$1" \
